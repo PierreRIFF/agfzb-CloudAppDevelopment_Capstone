@@ -3,6 +3,9 @@ import json
 # import related models here
 from .models import CarDealer, DealerReview
 from requests.auth import HTTPBasicAuth
+from ibm_watson import NaturalLanguageUnderstandingV1
+from ibm_cloud_sdk_core.authenticators import IAMAuthenticator
+from ibm_watson.natural_language_understanding_v1 import Features, SentimentOptions
 
 
 # Create a `get_request` to make HTTP GET requests
@@ -95,6 +98,7 @@ def get_dealer_reviews_from_cf(url, **kwargs):
                 car_make=review_doc.get("car_make"),
                 car_model=review_doc.get("car_model"),
                 car_year=review_doc.get("car_year"),
+                #sentiment=analyze_review_sentiments(review_doc.get("review")),
                 sentiment="neutral",
                 id=review_doc.get("id")
             )
@@ -111,17 +115,25 @@ def store_review(url, payload):
 # - Call get_request() with specified arguments
 # - Get the returned sentiment label such as Positive or Negative
 def analyze_review_sentiments(text):
-    url = "https://api.au-syd.natural-language-understanding.watson.cloud.ibm.com/instances/d797b64c-d85b-4f05-84d3-a4478a5182ca"
     api_key = "Em3XQTZJDzblaVwUkdaKpdbGjPTZIfd9dbl362dOozbZ"
-    params = {
-        "text": text,
-        "features": {
-            "sentiment": {
-            }
-        },
-        "language": "en"
-    }
-    # params["return_analyzed_text"] = kwargs["return_analyzed_text"]
-    response = requests.post(url, json=params, headers={'Content-Type': 'application/json'},
-                                    auth=('apikey', api_key))
-    return response.json()["sentiment"]["document"]["label"]
+    url = "https://api.au-syd.natural-language-understanding.watson.cloud.ibm.com/instances/d797b64c-d85b-4f05-84d3-a4478a5182ca"
+    texttoanalyze= text
+    version = '2020-08-01'
+    authenticator = IAMAuthenticator(api_key)
+    natural_language_understanding = NaturalLanguageUnderstandingV1(
+    version='2020-08-01',
+    authenticator=authenticator
+    )
+    natural_language_understanding.set_service_url(url)
+    response = natural_language_understanding.analyze(
+        text=text,
+        features= Features(sentiment= SentimentOptions())
+    ).get_result()
+    print(json.dumps(response))
+    sentiment_score = str(response["sentiment"]["document"]["score"])
+    sentiment_label = response["sentiment"]["document"]["label"]
+    print(sentiment_score)
+    print(sentiment_label)
+    sentimentresult = sentiment_label
+    
+    return sentimentresult
